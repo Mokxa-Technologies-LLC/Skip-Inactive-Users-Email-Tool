@@ -2,14 +2,10 @@ package org.joget.enhancedemailtool.app;
 
 import java.io.IOException;
 import java.io.OutputStream;
-
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
@@ -22,495 +18,461 @@ import org.joget.apps.app.model.FormDefinition;
 import org.joget.apps.app.service.AppUtil;
 import org.joget.apps.form.dao.FormDataDao;
 import org.joget.apps.form.model.Form;
-import org.joget.apps.form.model.FormRowSet;
 import org.joget.apps.form.service.FormPdfUtil;
 import org.joget.apps.form.service.FormService;
 import org.joget.apps.form.service.FormUtil;
 import org.joget.commons.util.LogUtil;
 import org.joget.commons.util.StringUtil;
 import org.joget.directory.dao.UserDao;
-import org.joget.directory.model.Employment;
-
 import org.joget.directory.model.User;
-import org.joget.enhancedemailtool.db.dao.impl.EmailAuditDaoImpl;
-import org.joget.enhancedemailtool.db.dto.Emailaudit;
-
 import org.joget.plugin.base.DefaultApplicationPlugin;
-
 import org.joget.plugin.base.PluginWebSupport;
 import org.joget.workflow.model.WorkflowAssignment;
 
 public class EmailAuditTool extends DefaultApplicationPlugin implements PluginWebSupport {
 
-	private EmailAuditDaoImpl emailAudtiService = null;
-	private FormDataDao formDataDao;
-	private UserDao userDao;
-
-	public String getName() {
-		return "Enhanced Email Tool";
-	}
-
-	public String getDescription() {
-		return "Enhanced Email Tool";
-	}
-
-	public String getVersion() {
-		return "1.0";
-	}
-	public String getLabel() {
-		return "Enhanced Email Tool";
-	}
-
-	public String getClassName() {
-		return getClass().getName();
-	}
-
-	public String getPropertyOptions() {
-		return AppUtil.readPluginResource(getClass().getName(), "/properties/enhancedEmailTool.json", null, true, null);
-	}
-	
-	// permission check for to, cc, bcc (this logic is missing - confirm with Harminder)
-//	public boolean permissionCheck(String isConditional, String email, Form form, String usernameField,
-//			String fieldToCheck, String valueToCheck, String sendEmailIfRowNotFound) {
-//
-//		if (!"true".equalsIgnoreCase(isConditional))
-//			return true;
-//		if (!"id".equalsIgnoreCase(usernameField))
-//			usernameField = "c_" + usernameField;
-//		if (fieldToCheck.isEmpty()) {
-//			// code to send emails if all conditon failed
-//			return true;
-//		}
-//		
-//		// fetch user data based on email (to, cc, bcc?)
-//		Collection<User> users = userDao.findUsers("where email=?", new Object[] { email }, null, null, null, null);
-//		for (Iterator iterator = users.iterator(); iterator.hasNext();) {
-//			User user = (User) iterator.next();
-//
-//			// check for user employments
-//			Set<Employment> employments = user.getEmployments();
-//
-//			for (Iterator iterator3 = employments.iterator(); iterator3.hasNext();) {
-//				Employment employment = (Employment) iterator3.next();
-//				
-//				// hardcoded logic - do we need?
-//				if ("Customer".equalsIgnoreCase(employment.getOrganizationId())) {
-//					FormRowSet permission = formDataDao.find("SystemSpecifications", "CustSpecification",
-//							"where id =? ", new Object[] { "" + employment.getDepartmentId() }, null, null, null, null);
-//
-//					if (permission.size() > 0) {
-//						if (permission.get(0).containsKey(fieldToCheck))
-//							if (!valueToCheck.equalsIgnoreCase(permission.get(0).getProperty(fieldToCheck))) {
-//
-//								return false;
-//							}
-//
-//					}
-//
-//					FormRowSet alerts = formDataDao.find("Alerts", "Customeralerts", "where id =? ",
-//							new Object[] { "" + employment.getDepartmentId() }, null, null, null, null);
-//
-//					if (alerts.size() > 0) {
-//						if (alerts.get(0).containsKey(fieldToCheck))
-//							if (!valueToCheck.equalsIgnoreCase(alerts.get(0).getProperty(fieldToCheck))) {
-//
-//								return false;
-//							}
-//
-//					}
-//				
-//				// hardcoded logic - do we need?
-//				} else if ("Monitor".equalsIgnoreCase(employment.getOrganizationId())) {
-//
-//					FormRowSet permission = formDataDao.find("ReportingSpecificationsMonitor", "MonitorSpecification",
-//							"where id =? ", new Object[] { "" + employment.getDepartmentId() }, null, null, null, null);
-//
-//					if (permission.size() > 0) {
-//						if (permission.get(0).containsKey(fieldToCheck))
-//							if (!valueToCheck.equalsIgnoreCase(permission.get(0).getProperty(fieldToCheck))) {
-//
-//								return false;
-//							}
-//
-//					}
-//					
-//					// hardcoded logic - do we need?
-//					FormRowSet alerts = formDataDao.find("AlertsMonitor", "MonitorAlerts", "where id =? ",
-//							new Object[] { "" + employment.getDepartmentId() }, null, null, null, null);
-//
-//					if (alerts.size() > 0) {
-//						if (alerts.get(0).containsKey(fieldToCheck))
-//							if (!valueToCheck.equalsIgnoreCase(alerts.get(0).getProperty(fieldToCheck))) {
-//
-//								return false;
-//							}
-//
-//					}
-//				}
-//				
-//				// hardcoded logic - do we need?
-//				else if ("Haulier".equalsIgnoreCase(employment.getOrganizationId())) {
-//
-//					FormRowSet permission = formDataDao.find("SystemSpecificationsHaulier", "HaulierSpecification",
-//							"where id =? ", new Object[] { "" + employment.getDepartmentId() }, null, null, null, null);
-//
-//					if (permission.size() > 0) {
-//						if (permission.get(0).containsKey(fieldToCheck))
-//							if (!valueToCheck.equalsIgnoreCase(permission.get(0).getProperty(fieldToCheck))) {
-//
-//								return false;
-//							}
-//
-//					}
-//					
-//					// hardcoded logic - do we need?
-//					FormRowSet alerts = formDataDao.find("AlertsHaulier", "HaulierAlerts", "where id =? ",
-//							new Object[] { "" + employment.getDepartmentId() }, null, null, null, null);
-//
-//					if (alerts.size() > 0) {
-//						if (alerts.get(0).containsKey(fieldToCheck)) {
-//							if (!valueToCheck.equalsIgnoreCase(alerts.get(0).getProperty(fieldToCheck))) {
-//
-//								return false;
-//							}
-//						}
-//
-//					}
-//				}
-//
-//			}
-//
-//			try {
-//
-//				FormRowSet permission = formDataDao.find(form, "where " + usernameField + "=? ",
-//						new Object[] { user.getUsername() }, null, null, null, null);
-//
-//				if (permission.size() > 0) {
-//					if (valueToCheck.equalsIgnoreCase(permission.get(0).getProperty(fieldToCheck))) {
-//						return true;
-//					} else {
-//						return false;
-//					}
-//
-//				}
-//			} catch (Exception e) {
-//				e.printStackTrace();
-//			}
-//			if ("true".equalsIgnoreCase(sendEmailIfRowNotFound)) {
-//				return true;
-//			}
-//
-//		}
-//
-//		return false;
-//	}
-
-	public Object execute(final Map properties) {
-		formDataDao = (FormDataDao) AppUtil.getApplicationContext().getBean("formDataDao");
-		userDao = (UserDao) AppUtil.getApplicationContext().getBean("userDao");
-		WorkflowAssignment wfAssignment = (WorkflowAssignment) properties.get("workflowAssignment");
-		AppDefinition appDef = (AppDefinition) properties.get("appDef");
-
-		try {
-
-			emailAudtiService = AppContext.getInstance().getAppContext().getBean("emailAuditDao",
-					EmailAuditDaoImpl.class);
-		} catch (Exception e1) {
-
-			e1.printStackTrace();
-		}
-
-		final String cc = (String) properties.get("cc");
-		final String bcc = (String) properties.get("bcc");
-		String toParticipantId = (String) properties.get("toParticipantId");
-		String toSpecific = (String) properties.get("toSpecific");
-
-		final String emailSubject = (String) properties.get("subject");
-		final String emailMessage = (String) properties.get("message");
-
-		String isConditional = (String) properties.get("isConditional");
-		String isSingle = (String) properties.get("isSingle");
-		String usernameField = (String) properties.get("idFeild");
-		String permissonFormDefId = (String) properties.get("permissionformDefId");
-
-		String fieldToCheck = "";
-		String valueToCheck = "";
-		String sendEmailIfRowNotFound = "";
-
-		String workflowValue = "";
-
-		if (!"multiple".equalsIgnoreCase(isSingle)) {
-
-			fieldToCheck = (String) properties.get("mailtype");
-			valueToCheck = (String) properties.get("valueToCheck");
-			sendEmailIfRowNotFound = (String) properties.get("sendEmailIfRowNotFound");
-		} else {
-
-			workflowValue = (String) properties.get("variableToCheck");
-			workflowValue = AppUtil.processHashVariable(workflowValue, wfAssignment, null, null);
-
-			Object mailConditions = getProperty("mailConditions");
-
-			for (Object opt : (Object[]) mailConditions) {
-				Map optMap = (Map) opt;
-
-				if (workflowValue.equals(optMap.get("variableValue"))) {
-					fieldToCheck = (String) optMap.get("mailtype");
-					valueToCheck = (String) optMap.get("valueToCheck");
-					sendEmailIfRowNotFound = (String) optMap.get("sendEmailIfRowNotFound");
-					break;
-				}
-			}
-
-		}
-
-		Form permissionForm = null;
-
-		permissionForm = getForm(permissonFormDefId);
-
-		Object files = getProperty("files");
-		if (files != null) {
-
-			if (files instanceof Object[]) {
-
-				for (Object opt : (Object[]) files) {
-
-					Map optMap = (Map) opt;
-					String path = AppUtil.processHashVariable((String) optMap.get("path"), wfAssignment, null, null);
-
-					optMap.put("path", path);
-
-
-				}
-
-			}
-		
-		}
-
-		if (fieldToCheck != null)
-		{	
-
-			if (fieldToCheck.isEmpty()) {
-
-				try {
-
-					if (emailAudtiService != null) {
-
-						Emailaudit audit = new Emailaudit("", cc, bcc, emailSubject, emailMessage,
-								"All conditons failed for variable value " + workflowValue);
-
-						emailAudtiService.save(audit);
-
-					}
-				} catch (Exception e) {
-
-					e.printStackTrace();
-				}
-
-			}
-		}
-		String isHtml = (String) properties.get("isHtml");
-
-		try {
-
-			Map<String, String> replaceMap = null;
-			if ("true".equalsIgnoreCase(isHtml)) {
-				replaceMap = new HashMap<>();
-				replaceMap.put("\\n", "<br/>");
-			}
-
-			// create the email message
-
-			List<String> toAddress = new ArrayList<>();
-			List<String> ccAddress = new ArrayList<>();
-			List<String> bccAddress = new ArrayList<>();
-			if (cc != null && cc.length() != 0) {
-				Collection<String> ccs = AppUtil.getEmailList(null, cc, wfAssignment, appDef);
-				for (String address : ccs) {
-
-//					if (permissionCheck(isConditional, address, permissionForm, usernameField, fieldToCheck,
-//							valueToCheck, sendEmailIfRowNotFound)) {
-						ccAddress.add(StringUtil.encodeEmail(address));
-//					} else {
-
-//					}
-
-				}
-			}
-			
-			// no permission check for bcc?
-			if (bcc != null && bcc.length() != 0) {
-
-				Collection<String> ccs = AppUtil.getEmailList(null, bcc, wfAssignment, appDef);
-				for (String address : ccs) {
-
-					bccAddress.add(StringUtil.encodeEmail(address));
-
-				}
-			}
-
-			String emailToOutput = "";
-
-			if ((toParticipantId != null && toParticipantId.trim().length() != 0)
-					|| (toSpecific != null && toSpecific.trim().length() != 0)) {
-
-				Collection<String> tss = AppUtil.getEmailList(toParticipantId, toSpecific, wfAssignment, appDef);
-				for (String address : tss) {
-
-					// code to check if email needed to be sent.
-//					if (permissionCheck(isConditional, address, permissionForm, usernameField, fieldToCheck,
-//							valueToCheck, sendEmailIfRowNotFound)) {
-						toAddress.add(StringUtil.encodeEmail(address));
-						emailToOutput += address + ", ";
-//					} else {
-//						// LogUtil.info(this.getClassName(), "Not Sending "+emailSubject +" To
-//						// "+address);
-//					}
-				}
-			} else {
-
-				try {
-
-					if (emailAudtiService != null) {
-						Emailaudit audit = new Emailaudit("", cc, bcc, emailSubject, emailMessage,
-								"no email specified");
-
-						emailAudtiService.save(audit);
-						LogUtil.info(this.getClassName(), "No Email Specified");
-					}
-				} catch (Exception e) {
-
-					e.printStackTrace();
-				}
-
-				return null;
-				// throw new PluginException("no email specified");
-
-			}
-
-			final String to = emailToOutput;
-
-			properties.put("toParticipantId", "");
-			properties.put("toSpecific", String.join(",", to));
-
-			if (bccAddress.size() > 0) {
-				properties.put("bcc", "");
-				ccAddress.addAll(bccAddress);
-			}
-
-			properties.put("cc", String.join(",", ccAddress));
-
-			if (toAddress.size() == 0) {
-				if (ccAddress.size() > 0) {
-					properties.put("toSpecific", String.join(",", ccAddress));
-					properties.put("cc", "");
-				} else if ("".equals(properties.get("bcc")) == false) {
-
-					properties.put("toSpecific", properties.get("bcc"));
-					properties.put("bcc", "");
-				}
-			}
-			try {
-
-				// Check if email fields are empty return
-				String emails = (String) properties.get("toSpecific");
-				if (emails.length() == 0) {
-
-					Emailaudit audit = new Emailaudit(to, cc, bcc, emailSubject, emailMessage, "no email specified");
-					emailAudtiService.save(audit);
-
-					LogUtil.info(this.getClassName(), "No Email Specified");
-					return null;
-				}
-
-				EmailTool tool = new EmailTool();
-
-				tool.execute(properties);
-				try {
-
-					if (emailAudtiService != null) {
-
-						Emailaudit audit = new Emailaudit(to, cc, bcc, emailSubject, emailMessage);
-
-						emailAudtiService.save(audit);
-					}
-				} catch (Exception e) {
-
-					// TODO Auto-generated catch block
-					// e.printStackTrace();
-				}
-
-			} catch (Exception ex) {
-
-				LogUtil.error(EmailTool.class.getName(), ex, "");
-				try {
-
-					if (emailAudtiService != null) {
-
-						Emailaudit audit = new Emailaudit(to, cc, bcc, emailSubject, emailMessage,
-								"ERROR" + ex.getMessage());
-
-						emailAudtiService.save(audit);
-					}
-				} catch (Exception e) {
-
-				}
-			}
-
-		} catch (Exception e) {
-
-		}
-
-		return null;
-	}
-
-	protected Form getForm(String formDefId) {
-
-		Form form = null;
-		if (formDefId != null) {
-			if (!formDefId.isEmpty()) {
-				AppDefinition appDef = AppUtil.getCurrentAppDefinition();
-				if ((appDef != null)) {
-					FormDefinitionDao formDefinitionDao = (FormDefinitionDao) AppUtil.getApplicationContext()
-							.getBean("formDefinitionDao");
-					FormService formService = (FormService) AppUtil.getApplicationContext().getBean("formService");
-					FormDefinition formDef = formDefinitionDao.loadById(formDefId, appDef);
-					if (formDef != null) {
-						String json = formDef.getJson();
-
-						form = ((Form) formService.createElementFromJson(json));
-
-						Boolean readonly = Boolean.valueOf("true".equalsIgnoreCase(getPropertyString("readonly")));
-						Boolean readonlyLabel = Boolean
-								.valueOf("true".equalsIgnoreCase(getPropertyString("readonlyLabel")));
-						if ((readonly.booleanValue()) || (readonlyLabel.booleanValue())) {
-							FormUtil.setReadOnlyProperty(form, readonly, readonlyLabel);
-						}
-					}
-				}
-			}
-		}
-
-		return form;
-	}
-
-	@Override
-	public void webService(HttpServletRequest request, HttpServletResponse response)
-			throws ServletException, IOException {
-		AppDefinition appDef = AppUtil.getCurrentAppDefinition();
-		// LogUtil.info(getClassName(),
-		// "formDefId--"+request.getParameter("formDefId")+"--id"+request.getParameter("id"));
-
-		byte[] data = FormPdfUtil.createPdf(request.getParameter("formDefId"), request.getParameter("id"), appDef, null,
-				null, null, null, null, null, null, null);
-		response.setContentType("application/pdf");
-		response.addHeader("Content-Disposition", "attachment; filename=" + request.getParameter("id") + ".pdf");
-		response.setContentLength(data.length);
-
-		OutputStream writer = response.getOutputStream();
-		writer.write(data);
-		writer.close();
-
-	}
-
+    private FormDataDao formDataDao;
+    private UserDao userDao;
+
+    public String getName() {
+        return "Skip Inactive Users Email Tool";
+    }
+
+    public String getDescription() {
+        return "Skip Inactive Users Email Tool";
+    }
+
+    public String getVersion() {
+        return "1.0";
+    }
+
+    public String getLabel() {
+        return "Skip Inactive Users Email Tool";
+    }
+
+    public String getClassName() {
+        return getClass().getName();
+    }
+
+    public String getPropertyOptions() {
+        return AppUtil.readPluginResource(
+            getClass().getName(),
+            "/properties/enhancedEmailTool.json",
+            null,
+            true,
+            null
+        );
+    }
+
+    @Override
+    public Object execute(Map properties) {
+
+        this.formDataDao =
+            (FormDataDao) AppUtil.getApplicationContext().getBean("formDataDao");
+
+        this.userDao =
+            (UserDao) AppUtil.getApplicationContext().getBean("userDao");
+
+        WorkflowAssignment wfAssignment =
+            (WorkflowAssignment) properties.get("workflowAssignment");
+
+        AppDefinition appDef =
+            (AppDefinition) properties.get("appDef");
+
+        String cc = (String) properties.get("cc");
+        String bcc = (String) properties.get("bcc");
+        String toParticipantId = (String) properties.get("toParticipantId");
+        String toSpecific = (String) properties.get("toSpecific");
+
+        try {
+
+            List<String> toAddress = new ArrayList<String>();
+            List<String> ccAddress = new ArrayList<String>();
+            List<String> bccAddress = new ArrayList<String>();
+
+            /*
+             * =========================
+             * PROCESS CC RECIPIENTS
+             * =========================
+             */
+            if (cc != null && !cc.trim().isEmpty()) {
+
+                Collection<String> ccs =
+                    AppUtil.getEmailList(null, cc, wfAssignment, appDef);
+
+                if (ccs != null) {
+                    for (String address : ccs) {
+
+                        if (isUserActiveByEmail(address)) {
+                            ccAddress.add(StringUtil.encodeEmail(address));
+
+                            LogUtil.info(
+                                getClass().getName(),
+                                "CC recipient accepted: " + address
+                            );
+                        } else {
+
+                            LogUtil.info(
+                                getClass().getName(),
+                                "CC recipient skipped because user is inactive: " + address
+                            );
+                        }
+                    }
+                }
+            }
+
+            /*
+             * =========================
+             * PROCESS BCC RECIPIENTS
+             * =========================
+             */
+            if (bcc != null && !bcc.trim().isEmpty()) {
+
+                Collection<String> bccs =
+                    AppUtil.getEmailList(null, bcc, wfAssignment, appDef);
+
+                if (bccs != null) {
+                    for (String address : bccs) {
+
+                        if (isUserActiveByEmail(address)) {
+                            bccAddress.add(StringUtil.encodeEmail(address));
+
+                            LogUtil.info(
+                                getClass().getName(),
+                                "BCC recipient accepted: " + address
+                            );
+                        } else {
+
+                            LogUtil.info(
+                                getClass().getName(),
+                                "BCC recipient skipped because user is inactive: " + address
+                            );
+                        }
+                    }
+                }
+            }
+
+            /*
+             * =========================
+             * PROCESS TO RECIPIENTS
+             * =========================
+             */
+            if ((toParticipantId != null && !toParticipantId.trim().isEmpty())
+                    || (toSpecific != null && !toSpecific.trim().isEmpty())) {
+
+                Collection<String> tos =
+                    AppUtil.getEmailList(
+                        toParticipantId,
+                        toSpecific,
+                        wfAssignment,
+                        appDef
+                    );
+
+                if (tos != null) {
+                    for (String address : tos) {
+
+                        if (isUserActiveByEmail(address)) {
+                            toAddress.add(StringUtil.encodeEmail(address));
+
+                            LogUtil.info(
+                                getClass().getName(),
+                                "TO recipient accepted: " + address
+                            );
+                        } else {
+
+                            LogUtil.info(
+                                getClass().getName(),
+                                "TO recipient skipped because user is inactive: " + address
+                            );
+                        }
+                    }
+                }
+            }
+
+            /*
+             * =========================
+             * UPDATE EMAIL PROPERTIES
+             * =========================
+             */
+            properties.put("toParticipantId", "");
+            properties.put("toSpecific", String.join(",", toAddress));
+            properties.put("cc", String.join(",", ccAddress));
+            properties.put("bcc", String.join(",", bccAddress));
+
+            /*
+             * =========================
+             * SEND EMAIL
+             * =========================
+             *
+             * Send only if at least one active/external
+             * recipient is available.
+             */
+            if (!toAddress.isEmpty()
+                    || !ccAddress.isEmpty()
+                    || !bccAddress.isEmpty()) {
+
+                EmailTool tool = new EmailTool();
+
+                try {
+
+                    tool.execute(properties);
+
+                    LogUtil.info(
+                        getClass().getName(),
+                        "Email sent successfully. "
+                        + "TO=" + String.join(",", toAddress)
+                        + ", CC=" + String.join(",", ccAddress)
+                        + ", BCC=" + String.join(",", bccAddress)
+                    );
+
+                } catch (Exception ex) {
+
+                    LogUtil.error(
+                        getClass().getName(),
+                        ex,
+                        "Error while sending email."
+                    );
+                }
+
+            } else {
+
+                LogUtil.info(
+                    getClass().getName(),
+                    "No active recipients found. Email will not be sent."
+                );
+            }
+
+        } catch (Exception e) {
+
+            LogUtil.error(
+                getClass().getName(),
+                e,
+                "Unexpected error occurred while processing email recipients."
+            );
+        }
+
+        return null;
+    }
+
+    /**
+     * Checks whether the email belongs to an active Joget user.
+     *
+     * Rules:
+     *
+     * 1. User exists in Joget and active = 1
+     *    -> return true
+     *
+     * 2. User exists in Joget and active != 1
+     *    -> return false
+     *
+     * 3. User does not exist in Joget directory
+     *    -> return true (external email)
+     *
+     * 4. Empty email
+     *    -> return false
+     */
+    private boolean isUserActiveByEmail(String email) {
+
+        if (email == null || email.trim().isEmpty()) {
+            return false;
+        }
+
+        String emailToCheck = email.trim();
+
+        try {
+
+            Collection<User> users = this.userDao.getUsers(
+                emailToCheck,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+            );
+
+            /*
+             * User found in Joget directory
+             */
+            if (users != null && !users.isEmpty()) {
+
+                for (User user : users) {
+
+                    LogUtil.info(
+                        getClass().getName(),
+                        "User lookup - "
+                        + "Email=" + user.getEmail()
+                        + ", Username=" + user.getUsername()
+                        + ", Active=" + user.getActive()
+                    );
+
+                    /*
+                     * Make sure the returned user is actually
+                     * the email address being checked.
+                     */
+                    if (user.getEmail() != null
+                            && emailToCheck.equalsIgnoreCase(
+                                user.getEmail().trim())) {
+
+                        /*
+                         * Joget active = 1
+                         */
+                        if (Integer.valueOf(1).equals(user.getActive())) {
+
+                            LogUtil.info(
+                                getClass().getName(),
+                                "ACTIVE user. Email allowed: "
+                                + emailToCheck
+                            );
+
+                            return true;
+
+                        } else {
+
+                            LogUtil.info(
+                                getClass().getName(),
+                                "INACTIVE user. Email blocked: "
+                                + emailToCheck
+                            );
+
+                            return false;
+                        }
+                    }
+                }
+            }
+
+            /*
+             * User is not present in Joget directory.
+             * Treat as external email and allow it.
+             */
+            LogUtil.info(
+                getClass().getName(),
+                "No Joget directory user found for email. "
+                + "Allowing external email: "
+                + emailToCheck
+            );
+
+            return true;
+
+        } catch (Exception e) {
+
+            LogUtil.error(
+                getClass().getName(),
+                e,
+                "Error checking user status for email: "
+                + emailToCheck
+            );
+
+            /*
+             * Allow email if directory lookup fails,
+             * preserving the external-email behavior.
+             */
+            return true;
+        }
+    }
+
+    protected Form getForm(String formDefId) {
+
+        Form form = null;
+
+        if (formDefId != null && !formDefId.isEmpty()) {
+
+            AppDefinition appDef =
+                AppUtil.getCurrentAppDefinition();
+
+            if (appDef != null) {
+
+                FormDefinitionDao formDefinitionDao =
+                    (FormDefinitionDao) AppUtil.getApplicationContext()
+                        .getBean("formDefinitionDao");
+
+                FormService formService =
+                    (FormService) AppUtil.getApplicationContext()
+                        .getBean("formService");
+
+                FormDefinition formDef =
+                    formDefinitionDao.loadById(formDefId, appDef);
+
+                if (formDef != null) {
+
+                    String json = formDef.getJson();
+
+                    form =
+                        (Form) formService.createElementFromJson(json);
+
+                    Boolean readonly =
+                        Boolean.valueOf(
+                            "true".equalsIgnoreCase(
+                                getPropertyString("readonly")
+                            )
+                        );
+
+                    Boolean readonlyLabel =
+                        Boolean.valueOf(
+                            "true".equalsIgnoreCase(
+                                getPropertyString("readonlyLabel")
+                            )
+                        );
+
+                    if (readonly.booleanValue()
+                            || readonlyLabel.booleanValue()) {
+
+                        FormUtil.setReadOnlyProperty(
+                            form,
+                            readonly,
+                            readonlyLabel
+                        );
+                    }
+                }
+            }
+        }
+
+        return form;
+    }
+
+    @Override
+    public void webService(
+            HttpServletRequest request,
+            HttpServletResponse response)
+            throws ServletException, IOException {
+
+        AppDefinition appDef =
+            AppUtil.getCurrentAppDefinition();
+
+        byte[] data =
+            FormPdfUtil.createPdf(
+                request.getParameter("formDefId"),
+                request.getParameter("id"),
+                appDef,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+            );
+
+        response.setContentType("application/pdf");
+
+        response.addHeader(
+            "Content-Disposition",
+            "attachment; filename="
+            + request.getParameter("id")
+            + ".pdf"
+        );
+
+        response.setContentLength(data.length);
+
+        OutputStream writer =
+            response.getOutputStream();
+
+        writer.write(data);
+        writer.close();
+    }
 }
