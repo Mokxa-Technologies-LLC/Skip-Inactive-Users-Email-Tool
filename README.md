@@ -28,5 +28,5 @@ The Enhanced Email Tool Plugin for Joget allows users to store all emails sent o
 - Camera-enabled device for scanning
 
 ## Support
-For any issues or enhancements, please contact [gurujot@mokxa.com].
+For any issues or enhancements, please contact joget support
 
